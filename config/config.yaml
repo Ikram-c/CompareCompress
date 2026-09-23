@@ -1,0 +1,419 @@
+# CompressCompare configuration
+#
+# This file is the single source of every tunable number in the application.
+# A copy is compiled into the executable as the built-in default; a file named
+# config.yaml next to the executable (or one passed with --config <path>)
+# overrides any subset of these keys.  Keys you leave out keep their built-in
+# value.  The `sites` list merges by name: an entry with a known name replaces
+# that site, a new name is appended.
+#
+# SECURITY: this file is TRUSTED INPUT, not user data.  `ffmpeg.search_subdirs`
+# and `ffmpeg.extra_search_dirs` determine which external binary the application
+# executes, so anyone able to write a config.yaml beside the executable can run
+# code as the user.  Treat write access to this file as equivalent to write
+# access to the application itself.
+#
+# Every key is documented in docs/reference/config.md.  Physical and standards
+# constants (sRGB curve, CIE matrices, JPEG marker codes, ...) are not settings
+# and live as named constants in the source.
+
+schema_version: 1           # layout version of this file; a build refuses files with another version
+
+app:                          # window, frame pacing, tooltips, panel geometry
+  name: CompressCompare     # window title and About text
+  window:                     # initial size
+    width_px: 1280            # initial window size at 100 % DPI scale
+    height_px: 760          # initial window height at 100 % DPI scale
+  ui_scale: 1.0               # multiplied with the monitor's DPI scale
+  power_saver: true           # sleep between frames when nothing happens
+  auto_visualize: true        # recompute as soon as a slot changes
+  compare_at_site_resolution: true   # false: upscale the site copy to the original
+  show_loupe: true            # corner loupe (before / after / heat at high zoom)
+  show_fps: false             # frame-rate and GPU read-out in the status bar
+  frame_timing:               # how often the main loop wakes up
+    fast_interval_s: 0.016667 # frame period while interacting or working (60 Hz)
+    idle_interval_s: 0.25     # frame period when idle (4 Hz)
+    idle_after_interaction_s: 1.5   # stay fast this long after the last input
+    iconified_sleep_ms: 50    # sleep per loop iteration while minimised
+  tooltip:                    # Dear ImGui hover delays
+    hover_delay_short_s: 0.25 # hover time before a short tooltip appears
+    hover_delay_normal_s: 0.45 # hover time before a normal tooltip appears
+    hover_stationary_delay_s: 0.12 # the pointer must rest this long before the delay starts
+  toast:                      # how long status-bar messages stay
+    short_s: 2.0              # "3 files dropped"
+    normal_s: 3.0             # "saved heatmap.png"
+    long_s: 5.0               # start-up problems
+  panels:                     # geometry at 100 % scale
+    left_width_px: 360        # at 100 % scale; also capped by the fraction below
+    left_max_fraction: 0.35 # the left panel never takes more than this share of the window
+    right_width_px: 330     # right panel width at 100 % scale
+    right_max_fraction: 0.30 # the right panel never takes more than this share of the window
+    slot_thumb_height_fraction: 0.45   # of the panel width
+    slot_thumb_min_px: 90   # slot thumbnail height floor (scaled)
+    slot_thumb_max_px: 170  # slot thumbnail height ceiling (scaled)
+    settings_window_width_px: 460 # initial width of the Settings window
+    about_window_width_px: 560 # initial width of the Shortcuts & about window
+    plot_height_px: 60      # height of the PSNR / SSIM plots in the Video section
+    histogram_height_px: 70 # height of the error histogram in Statistics
+
+limits:                       # everything that bounds memory, time and loops
+  max_image_bytes: 209715200          # 200 MiB: still images larger than this are refused
+  max_download_bytes: 104857600       # 100 MiB: URL downloads (videos use the video cap)
+  max_image_edge_px: 16384            # decoded stills with a longer edge are refused
+  max_image_pixels: 100000000         # 100 MP: total decoded area, checked alongside the edge cap.
+                                      # The edge cap alone does not bound memory - a 16384x16384
+                                      # flat-colour PNG compresses to a few hundred KB but decodes
+                                      # to ~1 GB as 8UC4, and a comparison holds the original, the
+                                      # site copy and the difference map at once (more again when
+                                      # dE2000 works in Lab float).  Budget ~4-6 full-size buffers.
+  max_temp_files: 256                 # temporary files a session may create
+  video:                      # caps applied before and after ffprobe runs
+    max_bytes: 262144000              # 250 MiB: refused before ffprobe runs
+    max_duration_s: 600               # 10 minutes
+    max_edge_px: 3840                 # longer edge, either orientation (4K)
+  sniff_head_bytes: 65536             # bytes read to detect a file's type
+  thumbnail_max_px: 512               # slot preview textures are at most this wide
+  max_site_slots: 16                  # upper bound on "+ Add another site"
+  max_query_chars: 64                 # site search box
+  max_site_name_chars: 128  # longest site name accepted from config.yaml
+  max_dropped_files: 64               # files accepted from one drag-and-drop
+  max_url_chars: 4096       # longest URL accepted in the slot text box
+
+metrics:                      # how the difference metrics and statistics are computed
+  ssim:                       # Wang et al. 2004 window
+    window: 11                # Gaussian window size in pixels (odd)
+    sigma: 1.5                # Gaussian sigma in pixels
+    k1: 0.01                  # stabilising constants from Wang et al. 2004
+    k2: 0.03                  # stabilising constant from Wang et al. 2004
+  jnd_delta_e2000: 2.3        # just-noticeable colour difference used by the "visible changes" statistic
+  histogram_bins: 64          # bins shown in the statistics panel
+  histogram_fine_bins: 1024   # bins used to estimate percentiles
+  auto_scale_percentile: 99   # heat-map auto scale maps this percentile to the top colour
+  block_size_px: 8            # JPEG block grid for the block view
+  psnr_identical_db: 99.0     # PSNR reported for identical images (would be infinite)
+  aspect_mismatch_tolerance: 0.005   # relative aspect-ratio difference that counts as a crop
+  custom_table_fit_error_pct: 8.0    # JPEG tables further from IJG tables than this are "custom"
+  default_scale:              # value mapped to the brightest colour when auto scale is off
+    abs_diff: 48            # 8-bit levels
+    luma_diff: 32           # 8-bit levels
+    delta_e76: 10             # dE units
+    delta_e2000: 6            # dE units
+    ssim: 0.5               # 1 - SSIM
+    squared_error: 1024     # levels squared
+
+heatmap:                      # initial state of the heat-map panel
+  metric: delta_e2000         # one of abs_diff, luma_diff, delta_e76, delta_e2000, ssim, squared_error
+  colormap: inferno           # one of inferno, viridis, heat, ice, alert, gray
+  after_mode: overlay         # one of after, heat, overlay (before is accepted too)
+  overlay_base: site          # original or site
+  intensity: 0.65             # overlay opacity 0..1
+  intensity_step: 0.1         # [ and ] change the opacity by this much
+  proportional: true          # opacity follows the error
+  auto_scale: true          # true: the brightest colour goes to metrics.auto_scale_percentile of the map
+  manual_max: 6.0           # value mapped to the brightest colour when auto_scale is false
+  manual_max_min_factor: 0.05 # slider range as multiples of the metric's default scale
+  manual_max_max_factor: 4.0 # upper end of the manual slider, as a multiple of the metric's default scale
+  gamma: 1.0                # curve applied to the normalised value (< 1 boosts faint differences)
+  gamma_min: 0.25           # lower end of the gamma slider
+  gamma_max: 3.0            # upper end of the gamma slider
+  gamma_floor: 0.05           # smallest gamma ever sent to the shader
+  threshold: 0.0            # hide everything below this fraction of the scale (0 = show all)
+  block_view: false         # average the map over metrics.block_size_px cells
+  log_histogram: true       # draw the error histogram on a log scale
+  legend_swatches: 64         # colour steps drawn in the legend bar
+  legend_height_px: 14      # height of the legend bar
+  colormap_preview_steps: 24  # colour steps in the colour-map picker swatches
+  colormap_preview_width_px: 60 # width of the swatches in the colour-map picker
+
+view:                         # zoom, loupe, split divider and canvas geometry
+  zoom:                       # wheel / keyboard zoom stepping (darktable-style snapping)
+    step_below_2x: 1.1        # wheel / Ctrl+- step while zoom < 200 %
+    step_above_2x: 2.0        # step while zoom >= 200 %
+    max: 16.0                 # 1600 %
+    min_fit_fraction: 0.5     # cannot zoom out below half of "fit" (or 100 %)
+    snap_epsilon: 0.00001     # zoom values this close to "fit" become "fit"
+  loupe:                      # the corner magnifier
+    zoom: 6                   # magnification of the corner loupe
+    min_zoom: 2             # lower end of the loupe zoom setting
+    max_zoom: 32            # upper end of the loupe zoom setting
+    size_fraction: 0.18       # of the canvas width
+    min_size_px: 96         # loupe box edge floor
+    max_size_px: 200        # loupe box edge ceiling (scaled)
+    margin_px: 10           # distance from the canvas corner
+    cursor_avoid_px: 20     # the loupe jumps to the other corner when the pointer gets this close
+  split:                      # divider hit-testing and rotate handle
+    line_hit_px: 7            # pointer distance that grabs the divider
+    handle_hit_px: 14         # pointer distance that grabs the rotate handle
+    handle_radius_fraction: 0.02   # of the pane width
+    handle_radius_max_px: 24 # largest rotate-handle radius
+  pane_gap_px: 4            # gap between the two panes of Left/Right and Top/Bottom views
+  pan_drag_threshold_px: 2  # pointer travel before a drag starts panning
+  canvas_min_px: 10           # smaller canvases are not drawn
+  preview_alpha: 90           # 0..255 alpha of the site image shown before a comparison exists
+  progress_bar_width_px: 200 # progress bar on the empty canvas
+
+fuzzy:                        # site search scoring (Sublime-Text-style subsequence match)
+  base_score: 100           # score every match starts from
+  sequential_bonus: 15        # adjacent matches
+  separator_bonus: 30         # match right after a space, '-', '_', '.', '/', '(' or ','
+  camel_bonus: 30             # match on an upper-case letter after a lower-case one
+  first_letter_bonus: 15      # match at index 0
+  leading_letter_penalty: -5  # per unmatched leading character
+  max_leading_letter_penalty: -15 # floor of the accumulated leading-letter penalty
+  unmatched_letter_penalty: -1 # per haystack character that was not matched
+  exact_substring_bonus: 40   # the whole pattern appears contiguously
+  dropdown_rows: 8            # rows visible in the site dropdown
+  dropdown_min_width_px: 260 # the site dropdown is at least this wide
+
+network:                      # URL downloads
+  # The +URL is how a site operator identifies this client if its traffic looks
+  # odd; keep it pointing at the real repository.  The version should be
+  # substituted from the CMake project version at build time (config.yaml is
+  # already run through EmbedFile.cmake) rather than maintained by hand here.
+  user_agent: "Mozilla/5.0 (compatible; CompressCompare/0.2; +https://github.com/Ikram-c/compresscompare)" # User-Agent header sent with every request
+  accept: "image/avif,image/webp,image/apng,image/*,video/*,*/*;q=0.8" # Accept header sent with every request
+  connect_timeout_s: 15     # give up connecting after this long
+  low_speed_limit_bytes_per_s: 1024   # abort when slower than this ...
+  low_speed_time_s: 30                # ... for this long
+  max_redirects: 10         # redirects followed before giving up
+  read_chunk_bytes: 65536   # bytes read per call from the socket
+  winhttp:                    # time-outs of the WinHTTP back end (Windows builds without libcurl)
+    resolve_timeout_ms: 15000 # DNS time-out (Windows builds without libcurl)
+    connect_timeout_ms: 15000 # connect time-out
+    send_timeout_ms: 30000  # request send time-out
+    receive_timeout_ms: 60000 # response receive time-out
+
+process:                      # external programs (ffmpeg, ffprobe, dialogs)
+  default_timeout_ms: 60000 # ffmpeg frame extraction and other runs
+  probe_timeout_ms: 30000   # ffprobe runs
+  version_timeout_ms: 10000 # ffmpeg -version at start-up
+  dialog_timeout_ms: 600000   # a file dialog can stay open for 10 minutes
+  stderr_cap_bytes: 1048576 # stderr kept per run (for error messages)
+  probe_stdout_cap_bytes: 1048576 # stdout kept from ffprobe
+  version_stdout_cap_bytes: 65536 # stdout kept from ffmpeg -version and small helpers
+  dialog_stdout_cap_bytes: 65536 # stdout kept from zenity / kdialog / osascript
+  pipe_chunk_bytes: 65536   # bytes read per call from a child's pipe
+  frame_cap_slack_bytes: 1024 # allowed bytes beyond w*h*3 when reading a raw frame
+  max_read_iterations: 1048576   # formal upper bound on pipe reads per process
+
+ffmpeg:                       # locating and driving ffmpeg / ffprobe
+  # Searched relative to the executable.  These must stay INSIDE the application
+  # bundle: a path that escapes it (../ffmpeg/bin) resolves into the directory
+  # the app happens to sit in - Downloads, a mounted DMG, a USB stick - where an
+  # attacker may be able to drop a file named "ffmpeg" and have it executed.
+  search_subdirs: [ffmpeg, ffmpeg/bin, bin, tools]   # relative to the executable
+  extra_search_dirs: [/usr/local/bin, /opt/local/bin, /opt/homebrew/bin]   # POSIX only (/opt/local = MacPorts)
+  scale_filter: lanczos       # ffmpeg scaler used when a frame is resized on the way out
+  seek_end_margin_s: 0.05     # never seek closer than this to the end of a clip
+  fallback_frame_step_s: 0.04 # frame step used when ffprobe reports no frame rate
+  max_still_edge_px: 16384    # AVIF/HEIC/TIFF stills decoded through ffmpeg
+  sample_points: 8            # "sample quality over time" default
+  sample_points_min: 3      # lower end of the sample-count slider
+  sample_points_max: 24     # upper end of the sample-count slider
+
+threading:                    # CPU parallelism
+  max_workers: 8              # OpenCV's thread pool uses at most this many threads (capped by the core count)
+  fallback_workers: 2         # when the core count is unknown
+  min_rows_per_worker: 16     # parallel_for() granularity (kept for compatibility; the image code uses OpenCV's pool)
+
+acceleration:                 # OpenCV and OpenCL (GPU) use
+  opencl: auto                # auto: use the GPU when its OpenCL driver passes a start-up self-test;
+                              # on: use any OpenCL device whose kernels build; off: CPU only
+  opencl_device: ""           # OpenCV device selector (OPENCV_OPENCL_DEVICE), e.g. ":GPU:0"; "" = default
+  min_gpu_pixels: 262144      # images smaller than this stay on the CPU (the upload costs more than it saves)
+  self_test_tolerance: 0.01   # largest accepted GPU-vs-CPU difference per value in the self-test
+  video_backend: auto         # auto: OpenCV (AVFoundation on macOS) first, then the ffmpeg executable;
+                              # opencv or ffmpeg: only that one
+
+sites:                        # the site database (name, aliases, hosts, notes); merged by name
+  - name: Instagram
+    aliases: [ig, insta, gram, instagram]
+    hosts: [instagram.com, cdninstagram.com, instagram.fbcdn.net]
+    notes: >-
+      Feed images are resized to 1080 px on the long side (1080x1080, 1080x1350 or 1080x566),
+      re-encoded as JPEG (roughly q70-80, 4:2:0) with metadata stripped; stories/reels are
+      transcoded to H.264 around 1080x1920.
+  - name: Facebook
+    aliases: [fb, facebook, meta]
+    hosts: [facebook.com, fbcdn.net, fbsbx.com, fb.com]
+    notes: >-
+      Photos are capped at 2048 px (720/960/2048 variants) and re-encoded as JPEG around q70-85;
+      PNGs are usually converted to JPEG. Videos are transcoded to H.264 with a bitrate cap that
+      depends on resolution.
+  - name: Threads
+    aliases: [threads, meta threads]
+    hosts: [threads.net, threads.com]
+    notes: >-
+      Shares Instagram's pipeline: 1080 px long side JPEG, metadata stripped; served from
+      cdninstagram.com hosts.
+  - name: X (Twitter)
+    aliases: [x, twitter, tweet, twtr, x.com]
+    hosts: [x.com, twitter.com, twimg.com, t.co]
+    notes: >-
+      Images above 4096 px are downscaled, most uploads are re-encoded as JPEG (q~85, 4:2:0) or
+      served as WebP; PNGs with transparency may be kept as PNG. Videos are transcoded to H.264
+      (several bitrate ladders, 1080p max).
+  - name: TikTok
+    aliases: [tiktok, tt, douyin]
+    hosts: [tiktok.com, tiktokcdn.com, tiktokcdn-us.com, tiktokv.com, musical.ly]
+    notes: >-
+      Videos are transcoded to H.264/H.265 at up to 1080p with aggressive bitrate targets; cover
+      images become JPEG/WebP.
+  - name: YouTube
+    aliases: [yt, youtube, youtu.be, shorts]
+    hosts: [youtube.com, youtu.be, ytimg.com, ggpht.com, googlevideo.com]
+    notes: >-
+      Videos are re-encoded into AVC/VP9/AV1 ladders (144p-4K); thumbnails are JPEG/WebP around
+      q80 at 1280x720 max.
+  - name: Reddit
+    aliases: [reddit, rdt, redd.it, subreddit]
+    hosts: [reddit.com, redd.it, redditmedia.com, redditstatic.com, reddituploads.com]
+    notes: >-
+      Original images are kept up to 20 MB but previews are re-encoded (JPEG/WebP, downscaled);
+      v.redd.it videos are transcoded to DASH H.264.
+  - name: Discord
+    aliases: [discord, dc, discordapp]
+    hosts: [discord.com, discordapp.com, discordapp.net, discord.gg]
+    notes: >-
+      Files below the upload cap are stored untouched; media.discordapp.net previews are
+      resized/converted to WebP on the fly (look at the ?format=&width= query).
+  - name: LinkedIn
+    aliases: [linkedin, li, licdn]
+    hosts: [linkedin.com, licdn.com, lnkd.in]
+    notes: >-
+      Images are re-encoded as JPEG with multiple sizes (up to ~1280-1920 px long side); videos
+      are transcoded to H.264 720p/1080p.
+  - name: Pinterest
+    aliases: [pinterest, pin, pinimg]
+    hosts: [pinterest.com, pinimg.com, pin.it]
+    notes: >-
+      Pins are stored at up to 1200-2000 px on the long side (originals/736x/564x variants) as
+      JPEG q~80 or WebP.
+  - name: Bluesky
+    aliases: [bluesky, bsky, blue sky, at proto]
+    hosts: [bsky.app, bsky.social, bsky.network, atproto.com]
+    notes: >-
+      Uploads are limited to ~1 MB; images are downscaled to 2000 px and re-encoded as JPEG
+      (feed thumbnails are WebP from cdn.bsky.app).
+  - name: Mastodon
+    aliases: [mastodon, fediverse, masto]
+    hosts: [mastodon.social, mastodon.online, mstdn.social, mas.to, fosstodon.org, hachyderm.io]
+    notes: >-
+      Default server settings shrink images to ~1920x1080 (2 MP) JPEG q~85 and cap video
+      size/bitrate; each instance can differ.
+  - name: WhatsApp
+    aliases: [whatsapp, wa, whats app]
+    hosts: [whatsapp.com, whatsapp.net]
+    notes: >-
+      Standard image sends are downscaled to ~1600 px long side and re-encoded as JPEG
+      (q~70-80); 'HD' keeps more resolution. Videos are heavily transcoded.
+  - name: Telegram
+    aliases: [telegram, tg, tele]
+    hosts: [telegram.org, t.me, telegram.me, telesco.pe, telegra.ph]
+    notes: >-
+      Photos sent as photos are resized to 1280 px long side JPEG q~87; 'send as file' keeps
+      the original. Videos are re-encoded unless sent as files.
+  - name: Snapchat
+    aliases: [snapchat, snap]
+    hosts: [snapchat.com, sc-cdn.net, snap.com]
+    notes: >-
+      Snaps and stories are re-encoded (JPEG / H.264) at phone resolution; saved media differs
+      from what viewers receive.
+  - name: Signal
+    aliases: [signal, signal messenger]
+    hosts: [signal.org]
+    notes: >-
+      Standard quality resizes to ~1600 px and re-encodes as JPEG; 'High' quality keeps
+      ~3072 px. No public CDN URLs.
+  - name: Messenger
+    aliases: [messenger, fb messenger, facebook messenger]
+    hosts: [messenger.com]
+    notes: >-
+      Uses Facebook's image pipeline (2048 px max, JPEG re-encode) unless files are sent as
+      attachments.
+  - name: Tumblr
+    aliases: [tumblr, tmblr]
+    hosts: [tumblr.com, media.tumblr.com, tmblr.co]
+    notes: Images are served in size ladders (up to 2048 px) as JPEG/WebP; GIFs are size-capped.
+  - name: Imgur
+    aliases: [imgur, imgr]
+    hosts: [imgur.com, imgur.io]
+    notes: >-
+      Large JPEGs are re-encoded and images above ~20 MB are downscaled; animated GIFs become
+      MP4/GIFV.
+  - name: Flickr
+    aliases: [flickr, flkr]
+    hosts: [flickr.com, staticflickr.com, flic.kr]
+    notes: >-
+      Originals can be kept (Pro) while display sizes (Large 1024/1600/2048) are re-encoded
+      JPEG q~90.
+  - name: 500px
+    aliases: [500px, five hundred px]
+    hosts: [500px.com, 500px.org]
+    notes: Display versions are re-encoded JPEG at 2048 px; originals are not served publicly.
+  - name: VSCO
+    aliases: [vsco]
+    hosts: [vsco.co]
+    notes: Images are re-encoded as JPEG at up to ~2048 px with metadata stripped.
+  - name: Behance
+    aliases: [behance, be]
+    hosts: [behance.net]
+    notes: Project images are re-encoded (JPEG/WebP) with responsive size ladders up to 1400/2800 px.
+  - name: ArtStation
+    aliases: [artstation, as]
+    hosts: [artstation.com]
+    notes: Images are re-encoded JPEG (large/medium/small ladders); 4K originals are downscaled.
+  - name: DeviantArt
+    aliases: [deviantart, da, dA]
+    hosts: [deviantart.com, wixmp.com, deviantart.net]
+    notes: Served through Wix media - resized JPEG/WebP ladders with quality parameters in the URL.
+  - name: Slack
+    aliases: [slack]
+    hosts: [slack.com, slack-files.com, slack-edge.com]
+    notes: Originals are kept for download; inline previews are resized/re-encoded thumbnails.
+  - name: Microsoft Teams
+    aliases: [teams, ms teams, microsoft teams]
+    hosts: [teams.microsoft.com, sharepoint.com]
+    notes: Pasted images are re-encoded; attached files are kept in SharePoint/OneDrive untouched.
+  - name: Google Photos
+    aliases: [google photos, gphotos, photos]
+    hosts: [photos.google.com, googleusercontent.com, photos.app.goo.gl]
+    notes: >-
+      'Storage saver' re-encodes at 16 MP / 1080p; 'Original quality' keeps files. Shared links
+      serve resized JPEG/WebP.
+  - name: iMessage
+    aliases: [imessage, apple messages, messages]
+    hosts: [icloud.com]
+    notes: >-
+      Photos are sent close to original unless 'Low Quality Image Mode' is on; videos are
+      transcoded to a smaller HEVC/H.264.
+  - name: WeChat
+    aliases: [wechat, weixin]
+    hosts: [wechat.com, qpic.cn, weixin.qq.com]
+    notes: >-
+      Images are downscaled and re-encoded as JPEG/WebP unless sent as 'original'; videos are
+      compressed strongly.
+  - name: Weibo
+    aliases: [weibo, sina]
+    hosts: [weibo.com, sinaimg.cn, weibo.cn]
+    notes: Images are re-encoded JPEG in size ladders (large/mw1024/bmiddle...).
+  - name: VK
+    aliases: [vk, vkontakte]
+    hosts: [vk.com, userapi.com, vk.me]
+    notes: Images are re-encoded JPEG with several sizes up to ~2560 px; videos transcoded to H.264 ladders.
+  - name: Medium
+    aliases: [medium]
+    hosts: [medium.com, miro.medium.com]
+    notes: Images are re-encoded and resized on the fly (WebP/JPEG) via the miro.medium.com CDN parameters.
+  - name: Substack
+    aliases: [substack]
+    hosts: [substack.com, substackcdn.com]
+    notes: Images are re-encoded through an image CDN (WebP/JPEG, width/quality parameters in the URL).
+  - name: Lemmy / Pixelfed
+    aliases: [lemmy, pixelfed, kbin]
+    hosts: [lemmy.world, lemmy.ml, pixelfed.social]
+    notes: "Instance-dependent: pict-rs / Pixelfed typically re-encode uploads as JPEG/WebP with a resolution cap."
+  - name: Other / custom
+    aliases: [other, custom, unknown, website, blog]
+    hosts: []
+    notes: Any other site or messaging app. The measured numbers still tell you exactly what it did.
