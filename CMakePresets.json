@@ -1,0 +1,81 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "macos-intel",
+      "displayName": "macOS 12+ Intel (x86_64) - Release",
+      "description": "Apple clang from the Xcode Command Line Tools, OpenCV from deps/opencv (scripts/build-deps.sh), OpenCL + AVFoundation + ImageIO, output CompressCompare.app.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/macos",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CC_BUILD_TESTS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-intel-debug",
+      "inherits": "macos-intel",
+      "displayName": "macOS 12+ Intel (x86_64) - Debug",
+      "binaryDir": "${sourceDir}/build/macos-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-system",
+      "displayName": "Linux - OpenCV from deps/ (or the system), other libraries from pkg-config or FetchContent",
+      "description": "Development and CI build. scripts/build-deps.sh builds the same OpenCV configuration with the FFmpeg video back-end.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "macos-intel",
+      "configurePreset": "macos-intel",
+      "jobs": 4
+    },
+    {
+      "name": "macos-intel-debug",
+      "configurePreset": "macos-intel-debug",
+      "jobs": 4
+    },
+    {
+      "name": "linux-system",
+      "configurePreset": "linux-system",
+      "jobs": 4
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "macos-intel",
+      "configurePreset": "macos-intel",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "linux-system",
+      "configurePreset": "linux-system",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

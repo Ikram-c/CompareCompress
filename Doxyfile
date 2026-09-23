@@ -1,0 +1,78 @@
+# Doxygen configuration for the CompressCompare API reference.
+# Run `doxygen Doxyfile` from the project root, or build the `docs` CMake target.
+# Every option not listed here keeps Doxygen's default.
+
+PROJECT_NAME           = CompressCompare
+PROJECT_NUMBER         = 0.3.0
+PROJECT_BRIEF          = "See where a site recompressed your image or video"
+OUTPUT_DIRECTORY       = build/doxygen
+CREATE_SUBDIRS         = NO
+
+INPUT                  = src README.md docs
+USE_MDFILE_AS_MAINPAGE = README.md
+FILE_PATTERNS          = *.h *.cpp *.md
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */generated/* */docs/REFERENCES.md
+EXCLUDE_SYMBOLS        = cc::generated
+IMAGE_PATH             = docs
+STRIP_FROM_PATH        = .
+STRIP_FROM_INC_PATH    = src
+
+# Every declaration carries a docstring; EXTRACT_ALL only keeps the few
+# self-explanatory ones (enum members, trivial getters) from being dropped.
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+EXTRACT_ANON_NSPACES   = YES
+HIDE_UNDOC_MEMBERS     = NO
+WARN_IF_UNDOCUMENTED   = NO
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = NO
+QUIET                  = YES
+
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+MULTILINE_CPP_IS_BRIEF = NO
+BUILTIN_STL_SUPPORT    = YES
+MARKDOWN_SUPPORT       = YES
+TAB_SIZE               = 2
+OPTIMIZE_OUTPUT_FOR_C  = NO
+SORT_MEMBER_DOCS       = NO
+SHOW_INCLUDE_FILES     = YES
+SOURCE_BROWSER         = YES
+STRIP_CODE_COMMENTS    = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+# Feature macros are always defined (0 or 1); document the macOS build with
+# libcurl (this port's target), so the ImageIO decoder and the curl path appear.
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = __APPLE__=1 \
+                         CC_HAVE_CURL=1 \
+                         CC_HAVE_WINHTTP=0 \
+                         "CC_GL_APIENTRY=" \
+                         DOXYGEN
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_TREEVIEW      = YES
+FULL_SIDEBAR           = NO
+HTML_DYNAMIC_SECTIONS  = YES
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+
+# Diagrams need Graphviz; they are skipped silently when `dot` is missing.
+HAVE_DOT               = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = NO
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+DIRECTORY_GRAPH        = YES
+DOT_MULTI_TARGETS      = YES
