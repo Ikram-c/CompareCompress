@@ -108,20 +108,7 @@ compresscompare --check-config | --system-info [--config FILE]
 compresscompare --help | --version
 ```
 
-On macOS the program is `CompressCompare.app/Contents/MacOS/CompressCompare`. Files fill the slots in order
-(original first); `--system-info` prints the OpenCV version, the OpenCL device and whether it is in use, the
-video back-end and the still decoders. See the [command-line reference](docs/reference/cli.md).
 
-## Engineering rules
-
-The code follows NASA/JPL's *Power of 10* rules adapted to a desktop application – no recursion, no
-`setjmp`, bounded loops, functions ≤ 60 lines, contracts that recover (`CC_REQUIRE`/`CC_ENSURE`), every
-return value checked, `-Wall -Wextra -Wpedantic … -Werror`, clang-tidy and cppcheck clean – with Doxygen
-docstrings on every declaration and no magic numbers. Where a rule is relaxed (callbacks for C libraries,
-per-job allocation, the event loop) the source says so; exceptions from yaml-cpp and OpenCV are caught where
-those libraries are called. The full rule-by-rule account is in
-[Design principles](docs/explanation/design-principles.md); the checks are run as described in
-[Run the tests and the static analysis](docs/how-to/run-tests-and-static-analysis.md).
 
 ## Layout
 
